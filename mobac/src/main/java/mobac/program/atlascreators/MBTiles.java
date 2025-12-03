@@ -1,0 +1,238 @@
+/*******************************************************************************
+ * Copyright (c) MOBAC developers
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ ******************************************************************************/
+package mobac.program.atlascreators;
+
+import mobac.exceptions.AtlasTestException;
+import mobac.mapsources.mapspace.MercatorPower2MapSpace;
+import mobac.program.annotations.AtlasCreatorName;
+import mobac.program.interfaces.LayerInterface;
+import mobac.program.interfaces.MapInterface;
+import mobac.program.interfaces.MapSource;
+import mobac.program.interfaces.MapSpace;
+import mobac.program.model.TileImageParameters;
+import mobac.program.model.TileImageType;
+
+import java.io.File;
+import java.io.IOException;
+import java.sql.PreparedStatement;
+import java.sql.SQLException;
+import java.sql.Statement;
+import java.text.SimpleDateFormat;
+import java.util.Date;
+import java.util.EnumSet;
+import java.util.Locale;
+import java.util.Set;
+import java.util.TreeSet;
+
+/**
+ * https://github.com/mapbox/mbtiles-spec/blob/master/1.3/spec.md
+ */
+@AtlasCreatorName(value = "MBTiles SQLite")
+public class MBTiles extends RMapsSQLite {
+
+	private static final String INSERT_TILES = "INSERT or REPLACE INTO tiles (tile_column,tile_row,zoom_level,tile_data) VALUES (?,?,?,?)";
+	private static final String TABLE_TILES = "CREATE TABLE IF NOT EXISTS tiles (zoom_level integer, tile_column integer, tile_row integer, tile_data blob);";
+	private static final String INDEX_TILES = "CREATE UNIQUE INDEX IF NOT EXISTS tiles_idx on tiles (zoom_level, tile_column, tile_row)";
+	private static final String TABLE_METADATA = "CREATE TABLE IF NOT EXISTS metadata (name text, value text);";
+	private static final String INSERT_METADATA = "INSERT INTO metadata (name,value) VALUES (?,?);";
+	private static final String INDEX_METADATA = "CREATE UNIQUE INDEX IF NOT EXISTS metadata_idx  ON metadata (name);";
+
+	private boolean initialized = false;
+
+	private double boundsBottom;
+	private double boundsTop;
+	private double boundsLeft;
+	private double boundsRight;
+
+	private int minZoom;
+
+	private int maxZoom;
+
+	private TileImageType atlasTileImageType;
+
+	@Override
+	public boolean testMapSource(MapSource mapSource) {
+		return MercatorPower2MapSpace.INSTANCE_256.equals(mapSource.getMapSpace());
+	}
+
+	@Override
+	protected void testAtlas() throws AtlasTestException {
+		EnumSet<TileImageType> allowed = EnumSet.of(TileImageType.JPG, TileImageType.PNG);
+		// Test of output format - only jpg xor png is allowed
+		TileImageType tit = null;
+		Set<Integer> zoomSet = new TreeSet<>();
+		for (LayerInterface layer : atlas) {
+			for (MapInterface map : layer) {
+				if (!zoomSet.add(map.getZoom())) {
+					throw new AtlasTestException(
+							String.format("Map source format incompatible - multiple maps exists for zoom level %d. "
+									+ "Only one map per zoom level allowed", map.getZoom()),
+							map);
+				}
+				TileImageParameters parameters = map.getParameters();
+				TileImageType currentTit;
+				if (parameters == null) {
+					currentTit = map.getMapSource().getTileImageType();
+					if (!allowed.contains(currentTit)) {
+						throw new AtlasTestException(
+								"Map source format incompatible - tile format conversion to PNG or JPG is required for this map.",
+								map);
+					}
+				} else {
+					currentTit = parameters.getFormat().getType();
+					if (!allowed.contains(currentTit)) {
+						throw new AtlasTestException(
+								"Selected custom tile format not supported - only JPG and PNG formats are supported.",
+								map);
+					}
+				}
+				if (tit != null && !currentTit.equals(tit)) {
+					throw new AtlasTestException("All maps within one atlas must use the same format (PNG or JPG). "
+							+ "Use tile format conversion converting maps with a different format.", map);
+				}
+				tit = currentTit;
+			}
+		}
+		atlasTileImageType = tit;
+	}
+
+	@Override
+	protected void openConnection() throws SQLException, IOException {
+		if (databaseFile.isFile()) {
+			SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd_HHmmss");
+			databaseFile = new File(atlasDir, atlas.getName() + "_" + sdf.format(new Date()) + ".mbtiles");
+		}
+		super.openConnection();
+	}
+
+	@Override
+	protected void initializeDB() throws SQLException {
+		if (initialized) {
+			return;
+		}
+		initialized = true;
+		try (Statement stat = conn.createStatement()) {
+			stat.executeUpdate(TABLE_TILES);
+			stat.executeUpdate(INDEX_TILES);
+			stat.executeUpdate(TABLE_METADATA);
+			stat.executeUpdate(INDEX_METADATA);
+		}
+		boundsBottom = Double.NEGATIVE_INFINITY;
+		boundsTop = Double.POSITIVE_INFINITY;
+		boundsLeft = Double.NEGATIVE_INFINITY;
+		boundsRight = Double.POSITIVE_INFINITY;
+		minZoom = Integer.MAX_VALUE;
+		maxZoom = 0;
+	}
+
+	@Override
+	protected void updateTileMetaInfo() throws SQLException {
+		MapSpace ms = map.getMapSource().getMapSpace();
+		double lon1 = ms.cXToLon(map.getMinTileCoordinate().x, zoom);
+		double lon2 = ms.cXToLon(map.getMaxTileCoordinate().x, zoom);
+		double lat1 = ms.cYToLat(map.getMinTileCoordinate().y, zoom);
+		double lat2 = ms.cYToLat(map.getMaxTileCoordinate().y, zoom);
+
+		boundsBottom = Math.max(boundsBottom, Math.min(lat1, lat2));
+		boundsTop = Math.min(boundsTop, Math.max(lat1, lat2));
+		boundsLeft = Math.max(boundsLeft, Math.min(lon1, lon2));
+		boundsRight = Math.min(boundsRight, Math.max(lon1, lon2));
+
+		minZoom = Math.min(minZoom, map.getZoom());
+		maxZoom = Math.max(maxZoom, map.getZoom());
+	}
+
+	@Override
+	public void finishAtlasCreation() throws IOException, InterruptedException {
+		try (PreparedStatement st = conn.prepareStatement(INSERT_METADATA)) {
+
+			// name (string): The human-readable name of the tileset.
+			st.setString(1, "name");
+			st.setString(2, atlas.getName());
+			st.execute();
+
+			// format (string): The file format of the tile data: pbf, jpg, png, webp, or an
+			// IETF media type for other formats.
+			st.setString(1, "format");
+			st.setString(2, atlasTileImageType.getFileExt());
+			st.execute();
+
+			// bounds (string of comma-separated numbers): The maximum extent of the
+			// rendered map area. Bounds must define an area covered by all zoom levels. The
+			// bounds are represented as WGS 84 latitude and longitude values, in the
+			// OpenLayers Bounds format (left, bottom, right, top).
+			if (boundsLeft < boundsRight && boundsTop > boundsBottom) {
+				st.setString(1, "bounds");
+				st.setString(2, String.format(Locale.ENGLISH, "%.3f,%.3f,%.3f,%.3f", boundsLeft, boundsBottom,
+						boundsRight, boundsTop));
+				st.execute();
+			}
+
+			// (number): The highest zoom level for which the tileset provides data
+			st.setString(1, "maxzoom");
+			st.setString(2, Integer.toString(maxZoom));
+			st.execute();
+
+			// (number): The lowest zoom level for which the tileset provides data
+			st.setString(1, "minzoom");
+			st.setString(2, Integer.toString(minZoom));
+			st.execute();
+
+			// type (string): overlay or baselayer
+			st.setString(1, "type");
+			st.setString(2, "baselayer");
+			st.execute();
+
+			// version (number): The version of the tileset. This refers to a revision of
+			// the tileset itself, not of the MBTiles specification.
+			st.setString(1, "version");
+			st.setString(2, "1.3");
+			st.execute();
+
+			// description (string): A description of the tileset's content.
+			SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+			st.setString(1, "description");
+			st.setString(2, atlas.getName() + " created on " + sdf.format(new Date()) + " by MOBAC");
+			st.execute();
+
+			conn.commit();
+		} catch (SQLException e) {
+			throw new IOException(e);
+		}
+		super.finishAtlasCreation();
+	}
+
+	@Override
+	protected String getTileInsertSQL() {
+		return INSERT_TILES;
+	}
+
+	@Override
+	protected void writeTile(int x, int y, int z, byte[] tileData) throws SQLException, IOException {
+		y = (1 << z) - y - 1;
+		prepStmt.setInt(1, x);
+		prepStmt.setInt(2, y);
+		prepStmt.setInt(3, z);
+		prepStmt.setBytes(4, tileData);
+		prepStmt.addBatch();
+	}
+
+	protected String getDatabaseFileName() {
+		return atlas.getName() + ".mbtiles";
+	}
+
+}

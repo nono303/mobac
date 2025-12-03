@@ -1,0 +1,107 @@
+plugins {
+    id 'java-library'
+    // https://plugins.gradle.org/plugin/edu.sc.seis.launch4j
+    id 'edu.sc.seis.launch4j' version '4.0.0'
+}
+
+dependencies {
+    def mapsforgeVersion = '+'
+
+    implementation "com.github.mapsforge.mapsforge:mapsforge-core:${mapsforgeVersion}"
+    implementation "com.github.mapsforge.mapsforge:mapsforge-map:${mapsforgeVersion}"
+    implementation "com.github.mapsforge.mapsforge:mapsforge-map-awt:${mapsforgeVersion}"
+    implementation "com.github.mapsforge.mapsforge:mapsforge-map-reader:${mapsforgeVersion}"
+    implementation "com.github.mapsforge.mapsforge:mapsforge-themes:${mapsforgeVersion}"
+
+    api 'org.apache-extras.beanshell:bsh:+'
+    api 'commons-codec:commons-codec:+'
+    api 'commons-io:commons-io:+'
+    api 'org.apache.commons:commons-lang3:+'
+    api 'org.apache.commons:commons-text:+'
+    api 'com.github.kerner1000:javapng:+'
+    api 'org.xerial:sqlite-jdbc:+'
+    api 'com.sleepycat:je:+'
+    api 'org.glassfish.jaxb:jaxb-runtime:+'
+    api 'org.slf4j:slf4j-api:+'
+    implementation 'com.twelvemonkeys.imageio:imageio-webp:+'
+    implementation 'ch.qos.logback:logback-classic:+'
+    implementation 'org.slf4j:jul-to-slf4j:+'
+    implementation 'net.sf.jtidy:jtidy:+'
+    implementation 'com.itextpdf:itextpdf:+'
+    implementation 'javax.media:jai-core:+'
+    implementation 'com.sun.media:jai-codec:+'
+    testImplementation 'org.jboss.resteasy:tjws:+'
+    testImplementation 'junit:junit:+'
+    testImplementation 'org.junit.jupiter:junit-jupiter-api:+'
+    testImplementation 'javax.servlet:servlet-api:+'
+
+    testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:+'
+}
+processResources {
+    doLast {
+        def targetDir = new File(sourceSets.main.output.resourcesDir, "mobac")
+        targetDir.mkdirs()
+        def props = new Properties()
+        props.setProperty("mobac.revision", "$svnRevision")
+        props.setProperty("mobac.version", "$projectVersion")
+        new File(targetDir, "mobac-rev.properties").withWriter { props.store(it, null) }
+    }
+}
+jar {
+    // println("SVN revision $svnRevision")
+
+    manifest {
+        attributes 'Main-Class': 'mobac.StartMOBAC'
+        attributes 'Version': project.rootProject.version
+        attributes 'SVN-Revision': svnRevision
+        attributes 'Build-Timestamp': new java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSZ").format(new Date())
+
+        // This entry is required by jaxb-runtime to work properly on Java 16+ - otherwise you will encounter
+        // java.lang.NullPointerException: Cannot invoke "java.lang.reflect.Method.invoke(Object, Object[])" because
+        // "com.sun.xml.bind.v2.runtime.reflect.opt.Injector.defineClass" is null
+        attributes 'Multi-Release': 'true'
+
+        attributes 'Add-Exports': 'java.base/sun.net.www.protocol.http java.base/sun.net.www.protocol.https'
+    }
+    getArchiveBaseName().set('Mobile_Atlas_Creator')
+    from {
+        configurations.runtimeClasspath.collect { it.isDirectory() ? it : zipTree(it) }
+    }
+    exclude("module-info.class")
+    exclude("META-INF/*.txt")
+    exclude("META-INF/*.md")
+    exclude("META-INF/MANIFEST.MF")
+    exclude("META-INF/maven/*")
+    // We only support 64 bit common architectures and platforms, remove the rest
+    exclude("org/sqlite/native/Windows/x86/**")
+    exclude("org/sqlite/native/Windows/armv7/**")
+    exclude("org/sqlite/native/Linux/arm*/**")
+    exclude("org/sqlite/native/Linux/x86/**")
+    exclude("org/sqlite/native/Linux/ppc64/**")
+    exclude("org/sqlite/native/Linux-Musl/**")
+    exclude("org/sqlite/native/Linux-Android/**")
+    exclude("org/sqlite/native/FreeBSD/**")
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+}
+
+launch4j {
+    productName = "Mobile Atlas Creator"
+    fileDescription = "Mobile Atlas Creator Windows Launcher"
+    // only take the number+dot part at the beginning
+    version = project.rootProject.version.toString().replaceAll('^([0-9\\.]+).*', '$1')
+    textVersion = project.rootProject.version
+    copyright = "MOBAC developers"
+    companyName = ""
+    icon = "${projectDir}/launch4j/mobac.ico"
+    downloadUrl = "https://mobac.sourceforge.io/OpenJDK/"
+    jreMinVersion = '1.11.0'
+    requires64Bit = true
+    dontWrapJar = true
+    libraryDir = ""
+    copyConfigurable = [] //["${project.buildDir}/libs/Mobile_Atlas_Creator.jar"]
+    outfile = "Mobile Atlas Creator.exe"
+}
+
+test {
+    useJUnitPlatform()
+}

@@ -1,0 +1,80 @@
+/*******************************************************************************
+ * Copyright (c) MOBAC developers
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ ******************************************************************************/
+package mobac.program.model;
+
+import mobac.program.interfaces.MapSource;
+
+import javax.swing.AbstractListModel;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.Vector;
+
+public class MapSourcesListModel extends AbstractListModel<MapSource> {
+
+	ArrayList<MapSource> mapSources;
+
+	public MapSourcesListModel(Vector<MapSource> source) {
+		this.mapSources = new ArrayList<>(source);
+	}
+
+	public MapSource getElementAt(int index) {
+		return mapSources.get(index);
+	}
+
+	public int getSize() {
+		return mapSources.size();
+	}
+
+	public Vector<MapSource> getVector() {
+		return new Vector<>(mapSources);
+	}
+
+	public MapSource removeElement(int index) {
+		fireIntervalRemoved(this, index, index);
+		return mapSources.remove(index);
+	}
+
+	public void addElement(MapSource element) {
+		mapSources.add(element);
+		fireIntervalAdded(this, mapSources.size(), mapSources.size());
+	}
+
+	public boolean moveUp(int index) {
+		if (index < 1) {
+			return false;
+		}
+		MapSource ms = mapSources.remove(index - 1);
+		mapSources.add(index, ms);
+		fireContentsChanged(this, index - 1, index);
+		return true;
+	}
+
+	public boolean moveDown(int index) {
+		if (index + 1 >= mapSources.size()) {
+			return false;
+		}
+		MapSource ms = mapSources.remove(index + 1);
+		mapSources.add(index, ms);
+		fireContentsChanged(this, index, index + 1);
+		return true;
+	}
+
+	public void sort() {
+		mapSources.sort(Comparator.comparing(Object::toString));
+		fireContentsChanged(mapSources, 0, mapSources.size());
+	}
+}

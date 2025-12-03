@@ -1,0 +1,22 @@
+plugins {
+    id 'java'
+}
+
+dependencies {
+    implementation project(':mobac')
+    implementation project(':mappacks:openstreetmap')
+    testImplementation 'org.junit.jupiter:junit-jupiter-api:5.8.0'
+    testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine'
+}
+
+test {
+    useJUnitPlatform()
+}
+jar{
+    archiveFileName = "MapEvaluator.jar"
+    manifest {
+        attributes "Main-Class": "mobac.StartMapEvaluator"
+        attributes "Class-Path": "Mobile_Atlas_Creator.jar"
+        attributes 'Add-Exports': 'java.base/sun.net.www.protocol.http java.base/sun.net.www.protocol.https'
+    }
+}

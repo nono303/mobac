@@ -1,0 +1,160 @@
+import java.nio.file.Files
+import java.nio.file.StandardCopyOption
+import java.security.MessageDigest
+
+plugins {
+    id 'distribution'
+    // https://plugins.gradle.org/plugin/at.bxm.svntools
+    id 'at.bxm.svntools' version '3.1'
+    // https://plugins.gradle.org/plugin/org.gradle.crypto.checksum
+    id 'org.gradle.crypto.checksum' version '1.4.0'
+    // https://mvnrepository.com/artifact/com.diffplug.spotless/spotless-plugin-gradle
+    id 'com.diffplug.spotless' version '8.0.0'
+}
+
+group = 'mobac.sourceforge.io'
+version = '2.3.3'
+
+// println("SVN revision $svntools.info.revisionNumber")
+
+allprojects {
+    repositories {
+        mavenCentral()
+        maven {
+            url = 'https://jitpack.io'
+            content { includeGroupByRegex "com\\.github\\..*" }
+        }
+        maven {
+            // required for javax.media:jai-core:1.1.3 and com.sun.media:jai-codec:1.1.3
+            url = "https://repository.jboss.org/nexus/content/repositories/thirdparty-releases/"
+        }
+        // For locally compiled beanshell/bsh3 project:
+        // git clone https://github.com/beanshell/beanshell
+        // cd beanshell && mvn install
+        mavenLocal()
+    }
+    ext {
+        svnRevision = "$svntools.info.revisionNumber"
+        projectVersion = project.rootProject.version.toString()
+    }
+    tasks.withType(JavaCompile) {
+        options.encoding = 'UTF-8'
+        options.incremental = true
+        options.fork = true
+        options.compilerArgs << '-Xlint:unchecked'
+        options.deprecation = false
+        // sourceCompatibility = JavaVersion.VERSION_11
+        // targetCompatibility = JavaVersion.VERSION_11
+    }
+}
+
+task distArchive(type: Zip, dependsOn: ['mobac:createExe', 'mappacks:openstreetmap:jar', "mapevaluator:jar"]) {
+
+    from("mobac/build/libs") {
+        include "*.jar"
+        into "/"
+    }
+    from("mobac/build/launch4j") {
+        include "*.exe"
+        into "/"
+    }
+    from(".") {
+        include "CHANGELOG.txt"
+        include "ReleaseNotes.txt"
+        include "gpl.txt"
+        include "README.html"
+        include "start.sh"
+        include "world.map"
+        into "/"
+    }
+    from(project(':mappacks').subprojects.collect { it.tasks.withType(Jar) }) {
+        into "/mapsources/"
+    }
+    from("mapevaluator/build/libs") {
+        include "MapEvaluator.jar"
+        into "/"
+    }
+
+    archiveFileName = "Mobile Atlas Creator ${project.version}.zip"
+    destinationDirectory = new File(".")
+}
+
+task distSrcArchive(type: Zip) {
+
+    from("/keys") {
+        include "keystore.txt"
+        include "*.cer"
+        into "/keys"
+    }
+    from("/mobac") {
+        exclude "**/build/**"
+        into "/mobac"
+    }
+    from("/mapevaluator") {
+        exclude "**/build/**"
+        into "/mapevaluator"
+    }
+    from("/mappacks") {
+        exclude "**/build/**"
+        into "/mappacks"
+    }
+    from("/") {
+        include "logback.xml"
+        include "gpl.txt"
+        include "README.html"
+        include "README-DEV.md"
+        include "CHANGELOG.txt"
+        include "start.sh"
+        include "world.map"
+        include "gradle/**"
+        include "gradle*"
+        include "settings.gradle"
+        include "gradle*"
+        include "build.gradle"
+    }
+    archiveFileName = "Mobile Atlas Creator ${project.version} src.zip"
+    destinationDirectory = new File(".")
+}
+task dist {
+    dependsOn(distArchive, distSrcArchive)
+}
+
+/**
+ * Generate MD5 file for map packs online update. This task is irreelvant for regular MOBAC users/developers
+ */
+task mappacksMd5 {
+    var mapPackDir = "${project.projectDir}/mappacks"
+    var writer = new StringWriter()
+    var updDir = project.file('mapsources-updates').toPath()
+    delete updDir
+    Files.createDirectories(updDir)
+    fileTree("$mapPackDir").matching {
+        include "**/build/libs/mp-*.jar"
+    }.each {
+        // do some operations
+        var p = it.toPath()
+        var dest = updDir.resolve(it.getName())
+        Files.copy(p, dest, StandardCopyOption.REPLACE_EXISTING)
+        // println(dest)
+
+        var bytes = Files.readAllBytes(dest)
+        var md5 = MessageDigest.getInstance("MD5").digest(bytes).encodeHex().toString()
+        writer.append(String.format("%s %s\n", md5, it.name))
+    }
+    // println(writer.toString())
+    Files.writeString(updDir.resolve("mappacks-md5.txt"), writer.toString())
+}
+
+spotless {
+    java {
+        target fileTree(rootDir).matching {
+            include '**/*.java'
+        }
+        removeUnusedImports()
+        eclipse()
+        lineEndings(com.diffplug.spotless.LineEnding.WINDOWS)
+        encoding("UTF-8")
+        trimTrailingWhitespace()
+        endWithNewline()
+    }
+}
