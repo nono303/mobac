@@ -23,6 +23,8 @@ import mobac.program.model.TileImageType;
 import mobac.utilities.file.DirOrFileExtFilter;
 import mobac.utilities.file.DirectoryFileFilter;
 import mobac.utilities.imageio.ImageFormatDetector;
+
+import org.apache.hc.core5.net.URIBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -215,7 +217,7 @@ public class Utilities {
 	}
 
 	public static HttpURLConnection openURL(String url) throws IOException {
-		return (HttpURLConnection) new URL(url).openConnection();
+		return (HttpURLConnection) URI.create(url).toURL().openConnection();
 	}
 
 	public static InputStream loadResourceAsStream(String resourcePath) throws IOException {
