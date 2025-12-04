@@ -12,7 +12,7 @@ dependencies {
     implementation "com.github.mapsforge.mapsforge:mapsforge-map-awt:${mapsforgeVersion}"
     implementation "com.github.mapsforge.mapsforge:mapsforge-map-reader:${mapsforgeVersion}"
     implementation "com.github.mapsforge.mapsforge:mapsforge-themes:${mapsforgeVersion}"
-    api 'org.beanshell:bsh:3.0.0-SNAPSHOT'
+    api 'org.beanshell:bsh:+'
     api 'commons-codec:commons-codec:1.15'
     api 'commons-io:commons-io:2.14.0'
     api 'org.apache.commons:commons-lang3:3.18.0'
@@ -44,12 +44,12 @@ processResources {
         def props = new Properties()
         props.setProperty("mobac.gitBranchName", "$gitBranchName")
         props.setProperty("mobac.gitHash", "$gitCommitHash")
-        props.setProperty("mobac.version", project.rootProject.version.toString())
+        props.setProperty("mobac.version", "$projectVersion")
         new File(targetDir, "mobac-rev.properties").withWriter { props.store(it, null) }
     }
 }
 jar {
-    println("GIT branch $gitBranchName commit $gitCommitHash")
+    // println("GIT branch $gitBranchName commit $gitCommitHash")
 
     manifest {
         attributes 'Main-Class': 'mobac.StartMOBAC'

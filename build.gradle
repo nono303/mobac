@@ -31,7 +31,7 @@ try {
     logger.lifecycle("No Git repository found; using defaults.")
 }
 
-println("GIT branch $gitBranchName commit $gitCommitHash on ${gitCommitTime}")
+// println("GIT branch $gitBranchName commit $gitCommitHash on ${gitCommitTime}")
 
 project.ext.gitBranchName = gitBranchName
 project.ext.gitCommitHash = gitCommitHash
@@ -53,6 +53,9 @@ allprojects {
         // git clone https://github.com/beanshell/beanshell
         // cd beanshell && mvn install
         mavenLocal()
+    }
+    ext {
+        projectVersion = project.rootProject.version.toString()
     }
     tasks.withType(JavaCompile) {
         options.encoding = 'UTF-8'
