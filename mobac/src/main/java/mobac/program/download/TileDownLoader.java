@@ -57,11 +57,11 @@ public class TileDownLoader {
 
     private static final Logger log = LoggerFactory.getLogger(TileDownLoader.class);
 
-    private static final CloseableHttpClient httpclient;
+    private static final PoolingHttpClientConnectionManager connManager;
 
     static {
 
-        PoolingHttpClientConnectionManager connManager = PoolingHttpClientConnectionManagerBuilder.create()
+        connManager = PoolingHttpClientConnectionManagerBuilder.create()
                 .setPoolConcurrencyPolicy(PoolConcurrencyPolicy.LAX)
                 .setConnPoolPolicy(PoolReusePolicy.LIFO)
                 .build();
@@ -74,11 +74,6 @@ public class TileDownLoader {
         // that can be kept in the pool or leased by the connection manager.
         connManager.setMaxTotal(200);
         connManager.setDefaultMaxPerRoute(100);
-
-        httpclient = HttpClients.custom()
-                .setConnectionManager(connManager) //
-                .setUserAgent(ProgramInfo.getUserAgent())
-                .build();
 
         Object defaultReadTimeout = System.getProperty("sun.net.client.defaultReadTimeout");
         if (defaultReadTimeout == null) {
@@ -200,20 +195,22 @@ public class TileDownLoader {
         log.trace("Downloading {}", tileUrl);
 
         final HttpResult result;
-        try (final CloseableHttpClient httpclient = HttpClients.createDefault()) {
-            final HttpGet httpget = new HttpGet(tileUrl);
+        final CloseableHttpClient httpclient = HttpClients.custom()
+                .setConnectionManager(connManager) //
+                .setUserAgent(ProgramInfo.getUserAgent())
+                .build();
+        final HttpGet httpget = new HttpGet(tileUrl);
 
-            result = httpclient.execute(httpget, response -> {
+        result = httpclient.execute(httpget, response -> {
 
-                if (response.getCode() != 200) {
-                    throw new RuntimeException("Tile download from " + tileUrl + " failed - status code " + response.getCode());
-                }
-                String contentType = response.getEntity().getContentType();
+            if (response.getCode() != 200) {
+                throw new RuntimeException("Tile download from " + tileUrl + " failed - status code " + response.getCode());
+            }
+            String contentType = response.getEntity().getContentType();
 
-                byte[] data = EntityUtils.toByteArray(response.getEntity());
-                return new HttpResult(response.getCode(), response.getHeaders(), contentType, data);
-            });
-        }
+            byte[] data = EntityUtils.toByteArray(response.getEntity());
+            return new HttpResult(response.getCode(), response.getHeaders(), contentType, data);
+        });
 
         checkContentType(result);
 
