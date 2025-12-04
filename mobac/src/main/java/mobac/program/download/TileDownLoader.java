@@ -60,7 +60,8 @@ public class TileDownLoader {
     private static final PoolingHttpClientConnectionManager connManager;
 
     static {
-
+    	
+    	// cf. https://github.com/apache/httpcomponents-client/blob/5.5.x/httpclient5/src/test/java/org/apache/hc/client5/http/examples/ClientConfiguration.java
         connManager = PoolingHttpClientConnectionManagerBuilder.create()
                 .setPoolConcurrencyPolicy(PoolConcurrencyPolicy.LAX)
                 .setConnPoolPolicy(PoolReusePolicy.LIFO)
@@ -79,6 +80,7 @@ public class TileDownLoader {
         if (defaultReadTimeout == null) {
             System.setProperty("sun.net.client.defaultReadTimeout", "15000");
         }
+        // https://stackoverflow.com/a/53744769
         System.setProperty("http.maxConnections", "20");
 
         // Disable restricted headers: By default some headers can't be set
@@ -197,7 +199,7 @@ public class TileDownLoader {
         final HttpResult result;
         final CloseableHttpClient httpclient = HttpClients.custom()
                 .setConnectionManager(connManager) //
-                .setUserAgent(ProgramInfo.getUserAgent())
+                .setUserAgent(Settings.getInstance().getUserAgent())
                 .build();
         final HttpGet httpget = new HttpGet(tileUrl);
 
