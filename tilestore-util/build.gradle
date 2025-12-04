@@ -28,7 +28,7 @@ jar {
     exclude("module-info.class")
     exclude("META-INF/*")
     exclude("META-INF/maven/*")
-    duplicatesStrategy DuplicatesStrategy.EXCLUDE
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
 }
 
 task distArchive(type: Zip, dependsOn: ['jar']) {

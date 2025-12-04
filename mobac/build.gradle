@@ -1,11 +1,11 @@
 plugins {
     id 'java-library'
-    id 'edu.sc.seis.launch4j' version '3.0.6'
+    // https://plugins.gradle.org/plugin/edu.sc.seis.launch4j
+    id 'edu.sc.seis.launch4j' version '4.0.0'
 }
 
 dependencies {
-    def mapsforgeVersion = '0.26.1'
-    // def mapsforgeVersion = 'master-SNAPSHOT'
+    def mapsforgeVersion = '+'
 
     implementation "com.github.mapsforge.mapsforge:mapsforge-core:${mapsforgeVersion}"
     implementation "com.github.mapsforge.mapsforge:mapsforge-map:${mapsforgeVersion}"
@@ -84,7 +84,7 @@ jar {
     exclude("org/sqlite/native/Linux-Musl/**")
     exclude("org/sqlite/native/Linux-Android/**")
     exclude("org/sqlite/native/FreeBSD/**")
-    duplicatesStrategy DuplicatesStrategy.EXCLUDE
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
 }
 
 launch4j {
