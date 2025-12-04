@@ -34,15 +34,10 @@ public class JMapSizeCombo extends JIntCombo {
 	static {
 		// Sizes from 1024 to 32768
 		MAP_SIZE_VALUES = new Vector<>(11);
-		MAP_SIZE_VALUES.addElement(128000);
+		MAP_SIZE_VALUES.addElement(DEFAULT = 4194303);;
 		MAP_SIZE_VALUES.addElement(1048575);
 		MAP_SIZE_VALUES.addElement(65536);
-		MAP_SIZE_VALUES.addElement(DEFAULT = 32767);
-		MAP_SIZE_VALUES.addElement(30000);
-		MAP_SIZE_VALUES.addElement(25000);
-		MAP_SIZE_VALUES.addElement(20000);
-		MAP_SIZE_VALUES.addElement(15000);
-		MAP_SIZE_VALUES.addElement(10000);
+		MAP_SIZE_VALUES.addElement(32767);
 		MAP_SIZE_VALUES.addElement(2048);
 		MAP_SIZE_VALUES.addElement(1024);
 	}
