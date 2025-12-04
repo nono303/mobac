@@ -43,7 +43,7 @@ public class JMapSourcesPanel extends JCollapsiblePanel {
 		JScrollPane mapSourceTreeScrollPane = new JScrollPane(mapSourceTree, JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED,
 				JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
 
-		mapSourceTreeScrollPane.setPreferredSize(new Dimension(100, 550));
+		mapSourceTreeScrollPane.setPreferredSize(new Dimension(100, 200));
 		mapSourceTreeScrollPane.setAutoscrolls(true);
 		addContent(mapSourceTreeScrollPane, GBC.eol().fill().insets(0, 1, 0, 0));
 	}

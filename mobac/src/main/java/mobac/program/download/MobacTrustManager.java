@@ -30,7 +30,8 @@ import javax.net.ssl.TrustManager;
 import javax.net.ssl.TrustManagerFactory;
 import javax.net.ssl.X509TrustManager;
 import java.io.IOException;
-import java.net.URL;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.security.KeyManagementException;
 import java.security.KeyStore;
 import java.security.KeyStoreException;
@@ -97,14 +98,14 @@ public class MobacTrustManager implements X509TrustManager {
 	}
 
 	public static String getServerPublicKeyHash(String serverUrl)
-			throws IOException, KeyManagementException, NoSuchAlgorithmException {
-		URL url = Utilities.parseURL(serverUrl);
+			throws IOException, KeyManagementException, NoSuchAlgorithmException, URISyntaxException {
+		URI uri = Utilities.parseURI(serverUrl);
 
 		SSLContext sslcontext = SSLContext.getInstance("TLS");
 		GetPublicKeyHashTrustManager trustManager = new GetPublicKeyHashTrustManager();
 		sslcontext.init(new KeyManager[0], new TrustManager[]{trustManager}, null);
 
-		HttpsURLConnection conn = (HttpsURLConnection) url.openConnection();
+		HttpsURLConnection conn = (HttpsURLConnection) uri.toURL().openConnection();
 		conn.setSSLSocketFactory(sslcontext.getSocketFactory());
 		try {
 			conn.connect();
@@ -129,7 +130,7 @@ public class MobacTrustManager implements X509TrustManager {
 			defaultTrustManager.checkServerTrusted(chain, authType);
 		} catch (CertificateException e) {
 			X509Certificate cert = chain[0]; // get the leaf certificate
-			log.debug("SSL error: {}", e.getMessage());
+			log.error("SSL error: {}", e.getMessage());
 			synchronized (this) {
 				String pubKeySha256Hash = getPublicKeySha256Hash(cert);
 				if (isCertificateTrusted(pubKeySha256Hash)) {
@@ -138,7 +139,7 @@ public class MobacTrustManager implements X509TrustManager {
 				// TODO: Add GUI for manually adding this certificate as trusted.
 				String message = "Untrusted certificate encountered: publicKeyHash=\"" + pubKeySha256Hash
 						+ "\"; certificate issued for " + cert.getSubjectX500Principal();
-				log.debug(message);
+				throw new CertificateException(message);
 			}
 		}
 	}

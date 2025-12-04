@@ -1,59 +1,62 @@
 plugins {
     id 'java-library'
-    // https://plugins.gradle.org/plugin/edu.sc.seis.launch4j
-    id 'edu.sc.seis.launch4j' version '4.0.0'
+    id 'edu.sc.seis.launch4j' version '3.0.6'
 }
 
 dependencies {
-    def mapsforgeVersion = '+'
+    def mapsforgeVersion = '0.26.1'
+    // def mapsforgeVersion = 'master-SNAPSHOT'
 
     implementation "com.github.mapsforge.mapsforge:mapsforge-core:${mapsforgeVersion}"
     implementation "com.github.mapsforge.mapsforge:mapsforge-map:${mapsforgeVersion}"
     implementation "com.github.mapsforge.mapsforge:mapsforge-map-awt:${mapsforgeVersion}"
     implementation "com.github.mapsforge.mapsforge:mapsforge-map-reader:${mapsforgeVersion}"
     implementation "com.github.mapsforge.mapsforge:mapsforge-themes:${mapsforgeVersion}"
+    api 'org.beanshell:bsh:3.0.0-SNAPSHOT'
+    api 'commons-codec:commons-codec:1.15'
+    api 'commons-io:commons-io:2.14.0'
+    api 'org.apache.commons:commons-lang3:3.18.0'
+    api 'org.apache.commons:commons-text:1.10.0'
+    api 'com.github.kerner1000:javapng:2.1.2'
+    api 'org.xerial:sqlite-jdbc:3.43.0.0'
+    api 'com.sleepycat:je:5.0.73'
+    api 'org.glassfish.jaxb:jaxb-runtime:3.0.2'
+    api 'org.slf4j:slf4j-api:1.7.36'
+    implementation 'org.apache.httpcomponents.client5:httpclient5:5.5.1'
+    implementation 'com.twelvemonkeys.imageio:imageio-webp:3.9.4'
+    implementation 'ch.qos.logback:logback-classic:1.3.15'
+    implementation 'org.slf4j:jul-to-slf4j:1.7.36'
+    implementation 'net.sf.jtidy:jtidy:r938'
+    implementation 'com.itextpdf:itextpdf:5.1.3'
+    implementation 'javax.media:jai-core:1.1.3'
+    implementation 'com.sun.media:jai-codec:1.1.3'
+    testImplementation 'org.jboss.resteasy:tjws:2.3.10.Final'
+    testImplementation 'junit:junit:4.13.2'
+    testImplementation 'org.junit.jupiter:junit-jupiter-api:5.8.2'
+    testImplementation 'javax.servlet:servlet-api:2.5'
 
-    api 'org.apache-extras.beanshell:bsh:+'
-    api 'commons-codec:commons-codec:+'
-    api 'commons-io:commons-io:+'
-    api 'org.apache.commons:commons-lang3:+'
-    api 'org.apache.commons:commons-text:+'
-    api 'com.github.kerner1000:javapng:+'
-    api 'org.xerial:sqlite-jdbc:+'
-    api 'com.sleepycat:je:+'
-    api 'org.glassfish.jaxb:jaxb-runtime:+'
-    api 'org.slf4j:slf4j-api:+'
-    implementation 'com.twelvemonkeys.imageio:imageio-webp:+'
-    implementation 'ch.qos.logback:logback-classic:+'
-    implementation 'org.slf4j:jul-to-slf4j:+'
-    implementation 'net.sf.jtidy:jtidy:+'
-    implementation 'com.itextpdf:itextpdf:+'
-    implementation 'javax.media:jai-core:+'
-    implementation 'com.sun.media:jai-codec:+'
-    testImplementation 'org.jboss.resteasy:tjws:+'
-    testImplementation 'junit:junit:+'
-    testImplementation 'org.junit.jupiter:junit-jupiter-api:+'
-    testImplementation 'javax.servlet:servlet-api:+'
-
-    testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:+'
+    testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.8.2'
 }
 processResources {
     doLast {
         def targetDir = new File(sourceSets.main.output.resourcesDir, "mobac")
         targetDir.mkdirs()
         def props = new Properties()
-        props.setProperty("mobac.revision", "$svnRevision")
-        props.setProperty("mobac.version", "$projectVersion")
+        props.setProperty("mobac.gitBranchName", "$gitBranchName")
+        props.setProperty("mobac.gitHash", "$gitCommitHash")
+        props.setProperty("mobac.version", project.rootProject.version.toString())
         new File(targetDir, "mobac-rev.properties").withWriter { props.store(it, null) }
     }
 }
 jar {
-    // println("SVN revision $svnRevision")
+    println("GIT branch $gitBranchName commit $gitCommitHash")
 
     manifest {
         attributes 'Main-Class': 'mobac.StartMOBAC'
         attributes 'Version': project.rootProject.version
-        attributes 'SVN-Revision': svnRevision
+        attributes "GitBranch": "$gitBranchName"
+        attributes "GitCommitHash": "$gitCommitHash"
+        attributes "GitCommitTime": "$gitCommitTime"
         attributes 'Build-Timestamp': new java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSZ").format(new Date())
 
         // This entry is required by jaxb-runtime to work properly on Java 16+ - otherwise you will encounter
@@ -81,7 +84,7 @@ jar {
     exclude("org/sqlite/native/Linux-Musl/**")
     exclude("org/sqlite/native/Linux-Android/**")
     exclude("org/sqlite/native/FreeBSD/**")
-    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+    duplicatesStrategy DuplicatesStrategy.EXCLUDE
 }
 
 launch4j {
