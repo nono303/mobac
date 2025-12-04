@@ -199,13 +199,13 @@ public class AtlasThread extends Thread
 			}
 		}
 
-		if (totalNrOfOnlineTiles > 500000) {
+		/* if (totalNrOfOnlineTiles > 500000) {
 			JOptionPane.showMessageDialog(null,
 					String.format(I18nUtils.localizedStringForKey("msg_too_many_tiles_msg"), 500000,
 							totalNrOfOnlineTiles),
 					I18nUtils.localizedStringForKey("msg_too_many_tiles_title"), JOptionPane.ERROR_MESSAGE);
 			return;
-		}
+		} */
 		try {
 			atlasCreator.startAtlasCreation(atlas, customAtlasDir);
 		} catch (AtlasTestException e) {
