@@ -192,6 +192,8 @@ public class CustomMapSource extends AbstractHttpMapSourceBase implements Reload
 			}
 
 			return TileDownLoader.getImage(x, y, zoom, this);
+		} catch (InterruptedException e) {
+			throw e;
 		} catch (Exception e) {
 			if (ignoreErrors) {
 				log.info("Ignored error: {}", e.toString());

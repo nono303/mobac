@@ -54,7 +54,7 @@ public class DownloadJobProducerThread extends Thread {
 			log.debug("All download jobs has been generated");
 		} catch (InterruptedException e) {
 			downloadJobDispatcher.cancelOutstandingJobs();
-			log.error("Download job generation interrupted");
+			// log.error("Download job generation interrupted");
 		}
 	}
 
