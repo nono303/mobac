@@ -3,6 +3,7 @@
 .gradle/
 **/build
 out/
+bin/
 *.log
 logback.xml
 **/.DS_Store
