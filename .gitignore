@@ -22,3 +22,8 @@ tilestore/
 mobac-profile*.xml
 settings.xml
 directories.ini
+
+.settings/
+.prefs
+.classpath
+.project
