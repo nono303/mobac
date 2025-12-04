@@ -151,7 +151,7 @@ import java.util.List;
 
 public class MainGUI extends JFrame implements MapEventListener {
 
-	public static final int LEFT_PANEL_MIN_SIZE = 254;
+	public static final int LEFT_PANEL_MIN_SIZE = 270;
 	public static final ArrayList<Image> MOBAC_ICONS = new ArrayList<>(3);
 	private static final long serialVersionUID = 1L;
 	private static final int LEFT_PANEL_MARGIN = 2;
@@ -712,6 +712,7 @@ public class MainGUI extends JFrame implements MapEventListener {
 		addLayers.addActionListener(AddMapLayer.INSTANCE);
 		atlasContentPanel.addContent(new JLabel(I18nUtils.localizedStringForKey("lp_atlas_name_label_title")), gbc_std);
 		atlasContentPanel.addContent(atlasNameTextField, gbc_eol.fill(GBC.HORIZONTAL));
+		atlasContentPanel.setPreferredSize(new Dimension(100, 150));
 
 		leftPanelContent = new JPanel(new GridBagLayout());
 		leftPanelContent.add(mapSourcePanel, gbc_eol);
