@@ -375,12 +375,14 @@ public class Settings {
 			case APP_SETTINGS :
 				newProxyHost = SYSTEM_PROXY_HOST;
 				newProxyPort = SYSTEM_PROXY_PORT;
-				log.info("Applying proxy configuration: host=" + newProxyHost + " port=" + newProxyPort);
+				if(newProxyHost != null && newProxyPort != null)
+					log.info("Applying proxy configuration: host=" + newProxyHost + " port=" + newProxyPort);
 				break;
 			case CUSTOM :
 				newProxyHost = customProxyHost;
 				newProxyPort = customProxyPort;
-				log.info("Applying proxy configuration: host=" + newProxyHost + " port=" + newProxyPort);
+				if(newProxyHost != null && newProxyPort != null)
+					log.info("Applying proxy configuration: host=" + newProxyHost + " port=" + newProxyPort);
 				break;
 			case CUSTOM_W_AUTH :
 				newProxyHost = customProxyHost;
@@ -390,7 +392,8 @@ public class Settings {
 						return new PasswordAuthentication(customProxyUserName, customProxyPassword.toCharArray());
 					}
 				};
-				log.info("Applying proxy configuration: host=" + newProxyHost + " port=" + newProxyPort + " user="
+				if(newProxyHost != null && newProxyPort != null && customProxyUserName != null)
+					log.info("Applying proxy configuration: host=" + newProxyHost + " port=" + newProxyPort + " user="
 						+ customProxyUserName);
 				break;
 		}
