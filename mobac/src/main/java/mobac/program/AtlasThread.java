@@ -26,6 +26,7 @@ import mobac.program.atlascreators.tileprovider.DownloadedTileProvider;
 import mobac.program.atlascreators.tileprovider.FilteredMapSourceProvider;
 import mobac.program.atlascreators.tileprovider.TileProvider;
 import mobac.program.download.DownloadJobProducerThread;
+import mobac.program.download.TileDownLoader;
 import mobac.program.interfaces.AtlasInterface;
 import mobac.program.interfaces.DownloadJobListener;
 import mobac.program.interfaces.DownloadableElement;
@@ -148,6 +149,7 @@ public class AtlasThread extends Thread
 		try {
 			createAtlas();
 			LOG.info("Atlas creation finished");
+			TileDownLoader.monitorConnectionPool();
 			if (quitMobacAfterAtlasCreation) {
 				System.exit(0);
 			}

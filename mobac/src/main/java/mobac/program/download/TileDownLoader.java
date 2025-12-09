@@ -18,7 +18,6 @@ package mobac.program.download;
 
 import mobac.exceptions.DownloadFailedException;
 import mobac.exceptions.UnrecoverableDownloadException;
-import mobac.program.ProgramInfo;
 import mobac.program.interfaces.HttpMapSource;
 import mobac.program.interfaces.MapSourceListener;
 import mobac.program.interfaces.MapSpace;
@@ -29,18 +28,30 @@ import mobac.program.tilestore.TileStoreEntry;
 import mobac.utilities.Utilities;
 import mobac.utilities.imageio.ImageFormatDetector;
 import mobac.utilities.stream.ThrottledInputStream;
+
+import org.apache.hc.client5.http.ConnectionKeepAliveStrategy;
 import org.apache.hc.client5.http.classic.methods.HttpGet;
 import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
 import org.apache.hc.client5.http.impl.classic.HttpClients;
 import org.apache.hc.client5.http.impl.io.PoolingHttpClientConnectionManager;
 import org.apache.hc.client5.http.impl.io.PoolingHttpClientConnectionManagerBuilder;
+import org.apache.hc.client5.http.ssl.DefaultClientTlsStrategy;
+import org.apache.hc.client5.http.ssl.TlsSocketStrategy;
 import org.apache.hc.client5.http.utils.DateUtils;
 import org.apache.hc.core5.http.Header;
+import org.apache.hc.core5.http.HeaderElement;
+import org.apache.hc.core5.http.HeaderElements;
+import org.apache.hc.core5.http.HttpResponse;
 import org.apache.hc.core5.http.NameValuePair;
 import org.apache.hc.core5.http.io.SocketConfig;
 import org.apache.hc.core5.http.io.entity.EntityUtils;
+import org.apache.hc.core5.http.message.MessageSupport;
+import org.apache.hc.core5.http.protocol.HttpContext;
 import org.apache.hc.core5.pool.PoolConcurrencyPolicy;
 import org.apache.hc.core5.pool.PoolReusePolicy;
+import org.apache.hc.core5.ssl.SSLContexts;
+import org.apache.hc.core5.util.Args;
+import org.apache.hc.core5.util.TimeValue;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -50,39 +61,91 @@ import java.net.HttpURLConnection;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.Date;
+import java.util.Iterator;
 import java.util.Objects;
 import java.util.Optional;
+import javax.net.ssl.SSLContext;
 
 public class TileDownLoader {
+
+	// millis
+	private static final int DEFAULT_TIMEOUT_READ =	15000;
+	// seconds
+	private static final int DEFAULT_TIMEOUT_KEEPALIVE = 30;
+	private static final int DEFAULT_CNX_MAX = 200;
+	private static final int DEFAULT_CNX_MAX_RT = 100;
 
     private static final Logger log = LoggerFactory.getLogger(TileDownLoader.class);
 
     private static final PoolingHttpClientConnectionManager connManager;
 
+    private static final ConnectionKeepAliveStrategy keepAliveStrategy;
+
+    private static int defaultReadTimeout;
+
+    public static void monitorConnectionPool() {
+        System.out.println("Max connections: " + connManager.getMaxTotal());
+        System.out.println("Leased connections: " + connManager.getTotalStats().getLeased());
+        System.out.println("Available connections: " + connManager.getTotalStats().getAvailable());
+
+        // Force cleanup of stale connections
+        connManager.closeExpired();
+        connManager.closeIdle(TimeValue.ofSeconds(DEFAULT_TIMEOUT_KEEPALIVE));
+    }
+
     static {
-    	
-    	// cf. https://github.com/apache/httpcomponents-client/blob/5.5.x/httpclient5/src/test/java/org/apache/hc/client5/http/examples/ClientConfiguration.java
+    	/*
+    	 * https://mangohost.net/blog/apache-httpclient-example-closeablehttpclient-usage/
+    	 * https://www.baeldung.com/httpclient-connection-management
+    	 * https://hc.apache.org/httpcomponents-client-5.5.x/current/httpclient5/xref-test/org/apache/hc/client5/http/examples/ClientConfiguration.html
+    	 * https://github.com/apache/httpcomponents-client/blob/5.5.x/httpclient5/src/test/java/org/apache/hc/client5/http/examples/ClientConfiguration.java
+    	 */
+    	keepAliveStrategy = new ConnectionKeepAliveStrategy() {
+    	    @Override
+    	    public TimeValue getKeepAliveDuration(HttpResponse response, HttpContext context) {
+    	        Args.notNull(response, "HTTP response");
+    	        final Iterator<HeaderElement> it = MessageSupport.iterate(response, HeaderElements.KEEP_ALIVE);
+    	        final HeaderElement he = it.next();
+    	        final String param = he.getName();
+    	        final String value = he.getValue();
+    	        if (value != null && param.equalsIgnoreCase("timeout")) {
+    	            try {
+    	                return TimeValue.ofSeconds(Long.parseLong(value));
+    	            } catch (final NumberFormatException ignore) {
+    	            }
+    	        }
+    	        return TimeValue.ofMilliseconds(defaultReadTimeout);
+    	    }
+    	};
+
+    	final SSLContext sslContext = SSLContexts.createSystemDefault();
+    	final TlsSocketStrategy tlsStrategy = new DefaultClientTlsStrategy(sslContext);
+    
         connManager = PoolingHttpClientConnectionManagerBuilder.create()
                 .setPoolConcurrencyPolicy(PoolConcurrencyPolicy.LAX)
                 .setConnPoolPolicy(PoolReusePolicy.LIFO)
+                .setTlsSocketStrategy(tlsStrategy)
                 .build();
-
         connManager.setDefaultSocketConfig(SocketConfig.custom()
                 .setTcpNoDelay(true)
                 .build());
 
         // Configure total max or per route limits for persistent connections
         // that can be kept in the pool or leased by the connection manager.
-        connManager.setMaxTotal(200);
-        connManager.setDefaultMaxPerRoute(100);
+        connManager.setMaxTotal(DEFAULT_CNX_MAX);
+        connManager.setDefaultMaxPerRoute(DEFAULT_CNX_MAX_RT);
 
-        Object defaultReadTimeout = System.getProperty("sun.net.client.defaultReadTimeout");
-        if (defaultReadTimeout == null) {
-            System.setProperty("sun.net.client.defaultReadTimeout", "15000");
+        try{
+        	defaultReadTimeout = Integer.parseInt(System.getProperty("sun.net.client.defaultReadTimeout"));
+        } catch(NumberFormatException e) {
+        	defaultReadTimeout = DEFAULT_TIMEOUT_READ;
         }
-        // https://stackoverflow.com/a/53744769
-        System.setProperty("http.maxConnections", "20");
 
+        System.setProperty("sun.net.client.defaultReadTimeout", String.valueOf(defaultReadTimeout));
+        // https://stackoverflow.com/a/53744769
+        System.setProperty("http.maxConnections", String.valueOf(DEFAULT_CNX_MAX_RT));
+        // Enable TCP keep-alive at OS level
+        System.setProperty("http.keepAlive", "true");
         // Disable restricted headers: By default some headers can't be set
         // see https://stackoverflow.com/questions/8335501
         System.setProperty("sun.net.http.allowRestrictedHeaders", "true");
@@ -191,14 +254,17 @@ public class TileDownLoader {
             throw new UnrecoverableDownloadException("Negative zoom!");
         }
 
-        // WARNING: This is experimental and incomplete code. The error handling is different and the  
+        // WARNING: This is experimental and incomplete code. The error handling is different and the
 
         String tileUrl = mapSource.getTileUrl(zoom, x, y);
         log.trace("Downloading {}", tileUrl);
 
         final HttpResult result;
         final CloseableHttpClient httpclient = HttpClients.custom()
-                .setConnectionManager(connManager) //
+                .setConnectionManager(connManager)
+                .setKeepAliveStrategy(keepAliveStrategy)
+                .evictExpiredConnections()
+                .evictIdleConnections(TimeValue.ofSeconds(DEFAULT_TIMEOUT_KEEPALIVE))
                 .setUserAgent(Settings.getInstance().getUserAgent())
                 .build();
         final HttpGet httpget = new HttpGet(tileUrl);
