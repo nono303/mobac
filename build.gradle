@@ -7,8 +7,8 @@ plugins {
     // https://plugins.gradle.org/plugin/org.gradle.crypto.checksum
     id 'org.gradle.crypto.checksum' version '1.4.0'
     // https://mvnrepository.com/artifact/com.diffplug.spotless/spotless-plugin-gradle
-    id 'com.diffplug.spotless' version '8.0.0'
-    // https://plugins.gradle.org/plugin/org.ajoberstar.grgit
+    id 'com.diffplug.spotless' version '8.1.0'
+    // https://git.sr.ht/~ajoberstar/grgit
     id 'org.ajoberstar.grgit' version '5.3.3'
 }
 
