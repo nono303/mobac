@@ -105,14 +105,16 @@ public class TileDownLoader {
     	    public TimeValue getKeepAliveDuration(HttpResponse response, HttpContext context) {
     	        Args.notNull(response, "HTTP response");
     	        final Iterator<HeaderElement> it = MessageSupport.iterate(response, HeaderElements.KEEP_ALIVE);
-    	        final HeaderElement he = it.next();
-    	        final String param = he.getName();
-    	        final String value = he.getValue();
-    	        if (value != null && param.equalsIgnoreCase("timeout")) {
-    	            try {
-    	                return TimeValue.ofSeconds(Long.parseLong(value));
-    	            } catch (final NumberFormatException ignore) {
-    	            }
+    	        while (it.hasNext()) {
+	    	        final HeaderElement he = it.next();
+	    	        final String param = he.getName();
+	    	        final String value = he.getValue();
+	    	        if (value != null && param.equalsIgnoreCase("timeout")) {
+	    	            try {
+	    	                return TimeValue.ofSeconds(Long.parseLong(value));
+	    	            } catch (final NumberFormatException ignore) {
+	    	            }
+	    	        }
     	        }
     	        return TimeValue.ofMilliseconds(defaultReadTimeout);
     	    }
