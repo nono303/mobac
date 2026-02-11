@@ -7,36 +7,27 @@ plugins {
     // https://plugins.gradle.org/plugin/org.gradle.crypto.checksum
     id 'org.gradle.crypto.checksum' version '1.4.0'
     // https://mvnrepository.com/artifact/com.diffplug.spotless/spotless-plugin-gradle
-    id 'com.diffplug.spotless' version '8.2.0'
-    // https://git.sr.ht/~ajoberstar/grgit
-    id 'org.ajoberstar.grgit' version '5.3.3'
+    id 'com.diffplug.spotless' version '8.2.1'
 }
 
 group = 'mobac.sourceforge.io'
 version = '2.3.3'
 
+def gitBranchName = providers.exec {
+  	commandLine("git", "rev-parse", "--abbrev-ref", "HEAD")
+}.standardOutput.asText.get().trim()
+def gitCommitHash = providers.exec {
+	commandLine("git", "rev-parse", "--short", "HEAD")
+}.standardOutput.asText.get().trim()
+ def gitCommitTime = providers.exec {
+ 	commandLine("git", "--no-pager", "log", "-1", "--format=%ai")
+ }.standardOutput.asText.get().trim()
 
-def gitBranchName = 'N/A'
-def gitCommitHash = 'N/A'
-def gitCommitTime = 'N/A'
-
-
-try {
-    def git = grgit.open(dir: project.rootDir)
-    gitBranchName = git.branch.current().name
-    gitCommitHash = git.head().abbreviatedId
-    gitCommitTime = git.head().dateTime.format('yyyy-MM-dd HH:mm:ss')
-} catch (Exception ignored) {
-    // No .git directory or not a git repo — fail gracefully
-    logger.lifecycle("No Git repository found; using defaults.")
-}
-
-// println("GIT branch $gitBranchName commit $gitCommitHash on ${gitCommitTime}")
+// println("GIT branch '${gitBranchName}' commit '${gitCommitHash}' on '${gitCommitTime}'")
 
 project.ext.gitBranchName = gitBranchName
 project.ext.gitCommitHash = gitCommitHash
 project.ext.gitCommitTime = gitCommitTime
-
 
 allprojects {
     repositories {
