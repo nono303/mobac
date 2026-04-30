@@ -5,7 +5,7 @@ plugins {
 }
 
 dependencies {
-    def mapsforgeVersion = '+'
+    def mapsforgeVersion = '0.28.0'
 
     implementation "com.github.mapsforge.mapsforge:mapsforge-core:${mapsforgeVersion}"
     implementation "com.github.mapsforge.mapsforge:mapsforge-map:${mapsforgeVersion}"
