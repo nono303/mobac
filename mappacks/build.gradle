@@ -16,9 +16,9 @@ subprojects {
             attributes "MapPackVersion": "1"
             attributes "MapPackName": "${project.name}"
             attributes "MapPackBuild-Date": new Date().toString()
-            attributes "GitBranch": "$gitBranchName"
-            attributes "GitCommitHash": "$gitCommitHash"
-            attributes "GitCommitTime": "$gitCommitTime"
+            attributes "GitBranch": rootProject.gitBranchName
+            attributes "GitCommitHash": rootProject.gitCommitHash
+            attributes "GitCommitTime": rootProject.gitCommitTime
         }
         doLast {
             def keystore = file("${rootProject.projectDir}/keys/keystore.jks")

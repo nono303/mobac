@@ -12,10 +12,10 @@ test {
 jar {
     manifest {
         attributes "Main-Class": "mobac.ts_util.TileStoreUtil"
-        attributes "Version": project.rootProject.version
-        attributes "GitBranch": "$gitBranchName"
-        attributes "GitCommitHash": "$gitCommitHash"
-        attributes "GitCommitTime": "$gitCommitTime"
+        attributes "Version": rootProject.version
+        attributes "GitBranch": rootProject.gitBranchName
+        attributes "GitCommitHash": rootProject.gitCommitHash
+        attributes "GitCommitTime": rootProject.gitCommitTime
         attributes "Class-Path": "Mobile_Atlas_Creator.jar"
 
         // This entry is required by jaxb-runtime to work properly on Java 16+ - otherwise you will encounter
