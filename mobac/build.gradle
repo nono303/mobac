@@ -44,7 +44,8 @@ processResources {
         targetDir.mkdirs()
         def props = new Properties()
         props.setProperty("mobac.gitBranchName", rootProject.gitBranchName)
-        props.setProperty("mobac.gitHash", rootProject.gitCommitHash)
+        props.setProperty("mobac.gitCommitHash", rootProject.gitCommitHash)
+        props.setProperty("mobac.gitCommitTime", rootProject.gitCommitTime)
         props.setProperty("mobac.version", "$projectVersion")
         new File(targetDir, "mobac-rev.properties").withWriter { props.store(it, null) }
     }
