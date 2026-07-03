@@ -16,6 +16,7 @@
  ******************************************************************************/
 package mobac.program.tilestore.berkeleydb;
 
+import com.sleepycat.je.CacheMode;
 import com.sleepycat.je.DatabaseException;
 import com.sleepycat.je.Environment;
 import com.sleepycat.je.EnvironmentConfig;
@@ -81,7 +82,12 @@ public class BerkeleyDbTileStore extends TileStore {
 		envConfig.setExceptionListener(GUIExceptionHandler.getInstance());
 		envConfig.setAllowCreate(true);
 		envConfig.setSharedCache(true);
-		envConfig.setCachePercent(50);
+		// https://docs.oracle.com/cd/E17277_02/html/java/com/sleepycat/je/CacheMode.html
+		envConfig.setCacheMode(CacheMode.EVICT_BIN);
+		envConfig.setOffHeapCacheSize(1073741824);
+		envConfig.setCacheSize(1073741824);
+		
+		log.info("BerkeleyDb EnvironmentConfig: "+envConfig.toString());
 
 		mutations = new Mutations();
 
